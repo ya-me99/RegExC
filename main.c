@@ -3,144 +3,219 @@
 #include "string.h"
 #include "stdlib.h"
 
-// Pattern Syntax = ControlFlowChar ObjectChar Operation Chars  
-
+// Regex Expression Format =  Object1 Logic&Control Object2 Logic&Control Object3 ...
+                                  
 #define MAX_ARGUMENT_LENGTH 512
 #define MAX_ARGUMENTS       26
 #define MAX_OP_CODES        255
+#define MAX_WORD_LENGTH     256
 
-//Todo : Get Rid Of Disgusting Typedefs 
-//Todo : Clean Up Substitute Functions Maby 
-//Todo : Handle Control Flow And Logical Evaluation
+//Todo : Try Out text++ to search throught text;
 //Todo : Build Execution Engine
 
+typedef enum
+{
+ STRICT_WORD,
+ STRICT_CHAR,
+ CHAR,
+}Regex_Object;
 
-typedef char*  Regex_CharStream;
+typedef enum
+{
+ EQUAL,
+ IN_GROUP,
+ UPPERCASE,
+ LOWERCASE,
+ NOT,
+}Regex_OpCode;
 
-typedef char*  Regex_Pattern;
+typedef enum
+{
+ JUMP,
+ FOR,
+}Regex_Control;
 
-typedef uint8_t (*Regex_Action)(uint64_t trigger, Regex_CharStream text);
-
-uint8_t Regex_CheckCharStream(Regex_CharStream text , 
-                              Regex_Pattern pattern , 
-                              Regex_Action action);
-
-uint8_t Action(uint64_t trigger , Regex_CharStream text);
-
-int64_t Regex_JumpToLetter(Regex_Pattern pattern ,uint16_t current_position, char letter);
-
+typedef enum
+{
+ OR,
+ XOR,
+}Regex_Logic;
 
 typedef struct 
 {
- uint8_t    object;
- uint8_t    op_code[MAX_OP_CODES];
- uint8_t    logic;
- char       argument[MAX_ARGUMENTS][MAX_ARGUMENT_LENGTH+1];
+ Regex_Object    object;
+ Regex_OpCode    op_code[MAX_OP_CODES];
+ Regex_Logic     logic;
+ Regex_Control   control;
+ uint8_t         operation_count;
+ char            argument[MAX_ARGUMENTS][MAX_ARGUMENT_LENGTH];
 }Regex_Operation;
 
 
+typedef uint8_t (*Regex_Action)(uint64_t trigger, char* text);
+
+uint8_t TestAction(uint64_t trigger , char* text);
+
+uint8_t Regex_AddOpCode(Regex_Operation *operation, Regex_OpCode op_code, char* argument);
+
+uint8_t Regex_ExecuteOperations(char* text, Regex_Operation* operations, uint16_t op_count , Regex_Action action);
+
+int64_t Regex_JumpToLetter(char* text, uint64_t current_pos);
+
+int16_t Regex_IsStrictWord(char* text, uint64_t pos);
+
+uint64_t Regex_GetObject(Regex_Object object, uint64_t current_pos, char* text);
+
+int8_t Regex_GetObjectStrictWord(uint64_t pos,char* text,char word[MAX_WORD_LENGTH]);
+
+int8_t Regex_GetObjectStrictChar(uint64_t pos,char* text,char* strict_char);
+
 int main()
 {
- Regex_Pattern pattern="$!W=(Blubber)^> $C=(D)^>       ";
-                       
- 
- Regex_Action action=&Action;
 
- Regex_CharStream stream=NULL;
+ Regex_Operation operation={};
+ operation.logic=NOT;
+ operation.object=STRICT_WORD;
+ Regex_AddOpCode(&operation,EQUAL,"Hallo");
+  
+ char* test="Bu!lu % Blib Blabber";
 
- Regex_CheckCharStream(stream,pattern,Action);
- 
+ Regex_GetObject(STRICT_WORD,0,test);
+ Regex_GetObject(STRICT_CHAR,0,test);
+ Regex_GetObject(CHAR,0,test);
+
+ printf(" %s \n ", operation.argument[0]);
+
  return 0;
 }
 
-
-uint8_t Regex_CheckCharStream(Regex_CharStream text , 
-                              Regex_Pattern pattern , 
-                              Regex_Action action)
+uint8_t Regex_AddOpCode(Regex_Operation *operation, Regex_OpCode op_code, char* argument)
 {
- uint8_t action_fire=0;
- Regex_Operation operations[256]={};
+ if(operation->operation_count>MAX_OP_CODES){ printf(" To Many OpCodes Add Failed\n "); return 0; }
 
- // Step 1 Parse Pattern
-
- uint8_t operation_counter=0;
- uint64_t i=0;
- uint64_t jump;
-
- while(1)
- {  
-  jump=Regex_JumpToLetter(pattern,i,'$'); 
-  if(jump==-1){ break; }
-  i+=jump+1;
-
-  if(pattern[i]=='!' || pattern[i]=='&' || pattern[i]=='|' ||
-     pattern[i]=='~' || pattern[i]=='*')
-     { operations[operation_counter].logic=pattern[i]; i++; };
-   
-  operations[operation_counter].object=pattern[i];
-  i++;
-  
-  printf(" Logical Operator = %c  , Object %c  \n ", operations[operation_counter].logic,operations[operation_counter].object);
-  
-  // Parse All OpCodes For The Object 
-  uint8_t  argument_counter=0;
-  uint8_t  op_code_counter=0;
-
-  while(pattern[i]!=' ')
-  {
-   
-   printf(" Op Code  %d \n ", op_code_counter);
-
-   operations[operation_counter].op_code[op_code_counter]=pattern[i]; 
-   i++;
+ operation->op_code[operation->operation_count]=op_code;
+ strcpy(operation->argument[operation->operation_count],argument);
  
-    if(pattern[i]=='(')
-    { 
-     printf(" Op Code  %d  Found Argument \n ", op_code_counter);
-     i++;
-     
-     uint8_t length=Regex_JumpToLetter(pattern,i,')');     
-     i+=length;     
+ operation->operation_count++;
 
-     if(length==0){ printf(" Fail Length 0 \n "); exit(1); }
-     
-     strncpy(operations[operation_counter].argument[argument_counter],
-                        &pattern[i-length],length);
-    
-     operations[operation_counter].argument[argument_counter][length+1]='\0';
+ return 1;
+}
 
-     printf(" Op Code  %d  Found Argument %s  \n ", op_code_counter , operations[operation_counter].argument[argument_counter]);
-     argument_counter++;
-     i++;
-     if(argument_counter==MAX_ARGUMENTS){ printf(" Hard Fault To Many Arguments %d \n", argument_counter); exit(1); };
-    }
+uint8_t Regex_ExecuteOperations(char* text, Regex_Operation* operations, uint16_t op_count , Regex_Action action)
+{
+ return 1;
+}
 
 
-   if(op_code_counter>20){ exit(1); }
-   op_code_counter++;
-  }  
+//ASCII Letters Are form 65 to 90 For Capital Letters and 97 to 122 for lowercase letters
 
-  operation_counter++;
+uint64_t Regex_GetObject(Regex_Object object, uint64_t current_pos, char* text)
+{
+ char  word[MAX_WORD_LENGTH];
+ char  strict_char;
+ char  character;
+
+ uint64_t pos=current_pos;
+
+ switch(object)
+ { 
+  case STRICT_WORD: Regex_GetObjectStrictWord(pos,text,word);
+                    break;
+
+  case STRICT_CHAR: Regex_GetObjectStrictChar(pos,text,&strict_char); 
+
+  case CHAR:if(text[current_pos]=='\0'){ printf(" No Futher Characters \n "); return 0; }
+            character=text[current_pos];
+            printf(" Not Strict Character %c Found \n ", character);
+            break;
+
+  default  : break;
+ }
+
+
+}
+
+int8_t Regex_GetObjectStrictChar(uint64_t pos,char* text,char* strict_char)
+{
+
+ while(text[pos]!='\0')
+ {
+
+  if( (text[pos]>64 && text[pos]<91) || (text[pos]>96 && text[pos]<128) ){ 
+   printf(" Strict Character %c", text[pos]);
+   strict_char=text[pos]; 
+   return pos; 
+  }
+
+  pos++;
  }
  
- printf(" Recived %d Operations " , operation_counter);
+ printf(" No Object Found \n ");
+ return -1;
 }
 
-uint8_t Action(uint64_t trigger , Regex_CharStream text)
+int8_t Regex_GetObjectStrictWord(uint64_t pos,char* text,char word[MAX_WORD_LENGTH])
 {
- printf(" Bluber Die Blub \n  ");
+ int16_t is_word=0;  
+ int64_t jump=0;
+
+ while(1){
+  jump=Regex_JumpToLetter(text,pos);
+ 
+  if(jump==-1){ printf(" Couldnt Find Object"); return 0; }
+ 
+  pos+=jump;
+  jump=0;
+  
+  is_word=Regex_IsStrictWord(text,pos);
+             
+  if(is_word!=-1){ 
+   strncpy(word,&text[pos],is_word);
+   word[is_word+1]='\0';
+   printf(" Found Word %s \n ", word);
+   break;
+  }
+             
+  while(text[pos]!=' '){ 
+   pos++; 
+
+   if(text[pos]=='\0'){
+    printf(" Couldnt Find Object"); return 0; 
+   }
+  }
+
+ }
 }
 
-int64_t Regex_JumpToLetter(Regex_Pattern pattern ,uint16_t current_position, char letter)
-{ 
- uint8_t length=0;
+int16_t Regex_IsStrictWord(char* text, uint64_t pos)
+{
+ uint16_t length=0;
+ 
+ while( (text[pos]>64 && text[pos]<91) || (text[pos]>96 && text[pos]<128)  ){ 
+   printf(" Found Letter %c at pos %d \n ", text[pos],pos);
+   length++;
+   pos++;
+ }
+ 
+ if(text[pos]=='\0' || text[pos]==' '){  return length; } 
 
- while(pattern[current_position]!=letter)
- {
-  if(pattern[current_position]=='\0'){ return -1; }; 
-   current_position++;
+ printf(" Found SpecialChar %c at pos %d \n ", text[pos],pos);
+
+ return -1;
+}
+
+
+int64_t Regex_JumpToLetter(char* text, uint64_t pos)
+{
+
+ uint64_t length=0;
+
+ while(! ( (text[pos]>64 && text[pos]<91) || (text[pos]>96 && text[pos]<128) ) ){ 
+   if(text[pos]=='\0'){ return -1; }
+   pos++;
    length++;
  }
 
  return length;
 }
+
