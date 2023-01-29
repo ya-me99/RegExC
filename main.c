@@ -1,164 +1,97 @@
-#include "stdio.h"
-#include "stdint.h"
-#include "string.h"
-#include "stdlib.h"
+#include "regex_c.h"
 
-// Regex Expression Format =  Object1Logic&Control Object2Logic&Control Object3Logic&Control ...
 
-#define MAX_ARGUMENT_LENGTH 512
-#define MAX_ARGUMENTS       26
-#define MAX_OP_CODES        255
-#define MAX_WORD_LENGTH     256
+//Todo : Handle Control Flow
 
-#define DEFAULT_TABLE_SIZE         2048
-#define MAX_GROUP_LENGTH           1024
-#define MAX_GROUP_NAME_LENGTH      256
+//Todo : Finish All Tests
 
-//Todo : Try Out text++ to search throught text
-//Todo : Add Default Groups And Group Tests
-//Todo : Build Execution Engine
+//Todo : And A Few Default Groups
 
-//ASCII Letters Are form 65 to 90 For Capital Letters and 97 to 122 for lowercase letters
+//Todo : ??? More Dynamic Memory Alloation Than Static OverSized Arrays ???
 
-typedef enum
-{
- STRICT_WORD,
- STRICT_CHAR,
- CHAR,
-}Regex_Object;
+//Todo : Find a way to Put Trigger At Start Not at end of Match
 
-typedef enum
-{
- EQUAL,
- IN_GROUP,
- UPPERCASE,
- LOWERCASE,
- NOT,
-}Regex_OpCode;
+//Todo : Build a Trigger Struct
 
-typedef enum
-{
- JUMP,
- FOR,
-}Regex_Control;
-
-typedef enum
-{
- OR,
- XOR,
-}Regex_Logic;
-
-typedef struct
-{
- Regex_Object    object;
- Regex_OpCode    op_code[MAX_OP_CODES];
- Regex_Logic     logic;
- Regex_Control   control;
- uint8_t         operation_count;
- char            argument[MAX_ARGUMENTS][MAX_ARGUMENT_LENGTH];
-}Regex_Operation;
-
-typedef struct
-{
- char* name;
- char* group;
- void* next;
-}Regex_GroupTableBucket;
 
 Regex_GroupTableBucket* group_table;
 
-typedef int8_t (*Regex_Action)(uint64_t trigger, char* text);
+int8_t TestAction(char* trigger);
 
-int8_t TestAction(uint64_t trigger , char* text);
-
-int8_t Regex_AddOpCode(Regex_Operation *operation, Regex_OpCode op_code, char* argument);
-
-int8_t Regex_ExecuteOperations(char* text, Regex_Operation* operations, uint16_t op_count , Regex_Action action);
-
-
-
-int64_t Regex_GetObject(Regex_Object object, char** head);
-
-
-int16_t Regex_IsStrictWord(char** head);
-
-int64_t Regex_GetObjectStrictWord(char** head,char word[MAX_WORD_LENGTH]);
-
-
-int64_t Regex_GetObjectStrictChar(char** head,char* strict_char);
-
-
-
-
-int64_t Regex_JumpToLetter(char** head);
-
-int8_t Regex_JumpToSpace(char** head);
-
-
-
-
-uint64_t Regex_HashGroup(char* name);
-
-int8_t Regex_RegisterGroup(char* name,char* group);
-
-int8_t Regex_InitGroupTable();
-
-void Regex_PrintGroupTable();
 
 
 int main()
 {
- Regex_Action action=&TestAction;
- Regex_Operation operation={};
- operation.logic=NOT;
- operation.object=STRICT_WORD;
- Regex_AddOpCode(&operation,EQUAL,"Hallo");
-
 
  Regex_InitGroupTable();
 
- char* group="Hallo,Bye,Tschüss,Was,Geht";
+ Regex_Action action=&TestAction;
+ Regex_Operation operation={ };
+ operation.logic=0;
+ operation.object=STRICT_WORD;
+ Regex_AddOpCode(&operation,EQUAL,"Lorem");
+ Regex_AddOpCode(&operation,EQUAL,"ipsum");
+ Regex_AddOpCode(&operation,EQUAL,"dolor");
 
- char* test="Brau";
- char* test1="Adau";
- char* test2="Dradwau";
- char* test3="Rraau";
 
- Regex_RegisterGroup(test,group);
- Regex_RegisterGroup(test,group);
- Regex_RegisterGroup(test1,group);
- Regex_RegisterGroup(test2,group);
- Regex_RegisterGroup(test3,group);
+ Regex_ExecuteOperations(lorem,&operation,1,action);
 
- //Regex_ExecuteOperations(test,NULL,0,action);
-
- Regex_PrintGroupTable();
-
+ printf("%s \n " ,lorem);
 }
 
-
-int8_t TestAction(uint64_t trigger, char* text)
+int8_t TestAction(char* trigger)
 {
+ *trigger='!';
  return 1;
 }
 
-int8_t Regex_ExecuteOperations(char* text, Regex_Operation* operations, uint16_t op_count , Regex_Action action)
+int8_t Regex_ExecuteOperations(char* text,
+                               Regex_Operation* operations,
+                               uint16_t op_count ,
+                               Regex_Action action)
 {
  char* head=text;
+ char* trigger;
  int8_t eof=0;
 
- eof=Regex_GetObject(STRICT_WORD,&head);
- if(eof==-1){ printf(" End of File \n "); return 1; }
+ int8_t action_fire=0;
 
- eof=Regex_GetObject(STRICT_CHAR,&head);
- if(eof==-1){ printf(" End of File \n "); return 1; }
 
- eof=Regex_GetObject(CHAR,&head);
- if(eof==-1){ printf(" End of File \n "); return 1; }
+ char  word[MAX_WORD_LENGTH];
+ char  strict_char;
+ char  character;
 
- eof=Regex_GetObject(STRICT_WORD,&head);
- if(eof==-1){ printf(" End of File \n "); return 1; }
+ while(1)
+ {
+  for(uint16_t i=0;i<op_count;i++)
+  {
+    switch(operations[i].object)
+    {
+     case STRICT_WORD: eof=Regex_GetObjectStrictWord(&head,word); trigger=head-eof; break;
 
+     case STRICT_CHAR: eof=Regex_GetObjectStrictChar(&head,&strict_char); break;
+
+     case CHAR:if(*head=='\0'){ printf(" No Futher Characters \n "); eof=-1; }
+               character=*head;
+               printf(" Not Strict Character %c Found \n ", character);
+               break;
+
+     default : break;
+    }
+
+    if(eof==-1){ printf(" End Of File Reached "); return 1; }
+
+   switch(operations[i].object)
+   {
+    case STRICT_WORD:action_fire=Regex_TestStrictWord(operations[i],word); break;
+
+    default  : break;
+   }
+
+   if(action_fire==1){ action(trigger); }
+  }
+
+ }
 }
 
 
@@ -166,7 +99,7 @@ int8_t Regex_ExecuteOperations(char* text, Regex_Operation* operations, uint16_t
 
 int64_t Regex_GetObjectStrictWord(char** head, char word[MAX_WORD_LENGTH])
 {
-  int16_t is_word=0;
+  int16_t word_length=0;
 
   while(1){
 
@@ -174,17 +107,17 @@ int64_t Regex_GetObjectStrictWord(char** head, char word[MAX_WORD_LENGTH])
 
     printf(" Head Jumped To Character %c \n" , **head );
 
-    is_word=Regex_IsStrictWord(head);
+    word_length=Regex_IsStrictWord(head);
 
-    printf("Word is %d Long \n ", is_word);
+    printf("Word is %d Long \n ", word_length);
 
-    if(is_word!=-1){
-      if(is_word>MAX_WORD_LENGTH){ printf(" word to long \n ");  return -1; }
-      char* word_start=(*head)-is_word;
-      strncpy(word,word_start,is_word);
-      word[is_word]='\0';
+    if(word_length!=-1){
+      if(word_length>MAX_WORD_LENGTH){ printf(" word to long \n ");  return -1; }
+      char* word_start=(*head)-word_length;
+      strncpy(word,word_start,word_length);
+      word[word_length]='\0';
       printf(" Found Word %s \n ", word);
-      break;
+      return word_length;
     }
 
     if(Regex_JumpToSpace(head)==-1){ printf(" End Of File Reached"); return -1; }
@@ -201,11 +134,7 @@ int16_t Regex_IsStrictWord(char** head)
     (*head)++;
   }
 
-  if(**head=='\0' || **head==' '){  return length; }
-
-  printf(" Found SpecialChar %c  \n ", **head);
-
-  return -1;
+  return length;
 }
 
 
@@ -240,7 +169,8 @@ int64_t Regex_GetObjectStrictChar(char** head,char* strict_char)
 
 int8_t Regex_AddOpCode(Regex_Operation *operation, Regex_OpCode op_code, char* argument)
 {
- if(operation->operation_count>MAX_OP_CODES){ printf(" To Many OpCodes Add Failed\n "); return 0; }
+ if(operation->operation_count>MAX_OP_CODES){
+    printf(" To Many OpCodes Add Failed\n "); return -1; }
 
  operation->op_code[operation->operation_count]=op_code;
  strcpy(operation->argument[operation->operation_count],argument);
@@ -253,29 +183,36 @@ int8_t Regex_AddOpCode(Regex_Operation *operation, Regex_OpCode op_code, char* a
 // ----------------------------------------------------------------- Op Code Functions End
 
 
-int64_t Regex_GetObject(Regex_Object object, char** head)
+// ----------------------------------------------------------------- Tests Start
+
+int8_t Regex_TestStrictWord(Regex_Operation operation,char* word)
 {
+ int8_t result=0;
+ int op_code_counter=0;
 
- char  word[MAX_WORD_LENGTH];
- char  strict_char;
- char  character;
-
- switch(object)
+ while(operation.op_code[op_code_counter]!=0)
  {
-  case STRICT_WORD: return Regex_GetObjectStrictWord(head,word); break;
+   switch(operation.op_code[op_code_counter])
+   {
+    case EQUAL : result=Regex_StrictWordEqual(word,operation.argument[op_code_counter]);break;
+    default: result=-1 ;break;
+   }
 
-  case STRICT_CHAR: return Regex_GetObjectStrictChar(head,&strict_char); break;
-
-  case CHAR:if(**head=='\0'){ printf(" No Futher Characters \n "); return -1; }
-            character=**head;
-            printf(" Not Strict Character %c Found \n ", character);
-            break;
-
-  default  : break;
+   op_code_counter++;
  }
 
+ return result;
 }
 
+
+int8_t Regex_StrictWordEqual(char* a,char* b)
+{
+  if(strcmp(a,b)==0){ return 1; }
+
+  return 0;
+}
+
+// ----------------------------------------------------------------- Tests End
 
 // ----------------------------------------------------------------- Utils
 
@@ -310,7 +247,7 @@ int8_t Regex_JumpToSpace(char** head)
 // ----------------------------------------------------------------- GroupTable
 
 
-uint64_t Regex_InitGroupTable()
+int8_t Regex_InitGroupTable()
 {
  group_table=calloc(sizeof(Regex_GroupTableBucket),DEFAULT_TABLE_SIZE);
 
@@ -336,7 +273,8 @@ int8_t Regex_RegisterGroup(char* name,char* group)
   return 1;
  }
 
- Regex_GroupTableBucket* next_bucket = group_table[slot].next = calloc(sizeof(Regex_GroupTableBucket),1);
+ Regex_GroupTableBucket* next_bucket = group_table[slot].next =
+ calloc(sizeof(Regex_GroupTableBucket),1);
 
  next_bucket->name=calloc(1,MAX_GROUP_NAME_LENGTH);
  next_bucket->group=calloc(1,MAX_GROUP_LENGTH);
