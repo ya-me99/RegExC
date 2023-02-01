@@ -1,3 +1,4 @@
+
 #ifndef REGEX_C_H
 #define REGEX_C_H
 
@@ -67,21 +68,14 @@ typedef struct
 }Regex_GroupTableBucket;
 
 
-typedef int8_t (*Regex_Action)(char* trigger);
-
-
 
 //--------------------------- Regex Core Prototypes Start
 
 int8_t Regex_AddOpCode(Regex_Operation *operation,Regex_OpCode op_code, char* argument);
 
-int8_t Regex_ExecuteOperations(char* text,
-                               Regex_Operation* operations,
-                               uint16_t op_count ,
-                               Regex_Action action);
-
-int64_t Regex_GetObject(Regex_Object object, char** head);
-
+char* Regex_ExecuteOperations(char* text,
+                              Regex_Operation* operations,
+                              uint16_t op_count);
 
 // --------------------------- Regex Core Prototypes End
 
@@ -90,7 +84,7 @@ int64_t Regex_GetObject(Regex_Object object, char** head);
 
 int16_t Regex_IsStrictWord(char** head);
 
-int64_t Regex_GetObjectStrictWord(char** head,char word[MAX_WORD_LENGTH]);
+int16_t Regex_GetObjectStrictWord(char** head,char word[MAX_WORD_LENGTH]);
 
 //---------------------------- StrictWord Prototypes End
 
@@ -98,7 +92,7 @@ int64_t Regex_GetObjectStrictWord(char** head,char word[MAX_WORD_LENGTH]);
 //---------------------------- Char Prototypes Start
 
 
-int64_t Regex_GetObjectStrictChar(char** head,char* strict_char);
+int8_t Regex_GetObjectStrictChar(char** head,char* strict_char);
 
 //---------------------------- Word Prototypes End
 

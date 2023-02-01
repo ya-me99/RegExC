@@ -1,6 +1,10 @@
 #include "regex_c.h"
 
 
+//Todo : Find a way to Put Trigger At Start Not at end of Match
+
+//Todo : Build a Trigger Struct
+
 //Todo : Handle Control Flow
 
 //Todo : Finish All Tests
@@ -9,69 +13,66 @@
 
 //Todo : ??? More Dynamic Memory Alloation Than Static OverSized Arrays ???
 
-//Todo : Find a way to Put Trigger At Start Not at end of Match
-
-//Todo : Build a Trigger Struct
 
 
 Regex_GroupTableBucket* group_table;
-
-int8_t TestAction(char* trigger);
-
-
 
 int main()
 {
 
  Regex_InitGroupTable();
 
- Regex_Action action=&TestAction;
  Regex_Operation operation={ };
  operation.logic=0;
  operation.object=STRICT_WORD;
- Regex_AddOpCode(&operation,EQUAL,"Lorem");
- Regex_AddOpCode(&operation,EQUAL,"ipsum");
- Regex_AddOpCode(&operation,EQUAL,"dolor");
+ Regex_AddOpCode(&operation,EQUAL,"Stet");
+
+ Regex_Operation operation1={ };
+ operation.logic=0;
+ operation.object=STRICT_WORD;
+ Regex_AddOpCode(&operation1,EQUAL,"clita");
+
+ Regex_Operation operation2={ };
+ operation.logic=0;
+ operation.object=STRICT_WORD;
+ Regex_AddOpCode(&operation2,EQUAL,"kaawdsd");
 
 
- Regex_ExecuteOperations(lorem,&operation,1,action);
+ Regex_Operation operations[3]={ operation,operation1,operation2 };
 
- printf("%s \n " ,lorem);
+ char* test=Regex_ExecuteOperations(lorem,operations,3);
+
+ printf("%s \n " , test);
 }
 
-int8_t TestAction(char* trigger)
-{
- *trigger='!';
- return 1;
-}
 
-int8_t Regex_ExecuteOperations(char* text,
+char*  Regex_ExecuteOperations(char* text,
                                Regex_Operation* operations,
-                               uint16_t op_count ,
-                               Regex_Action action)
+                               uint16_t op_count )
 {
  char* head=text;
- char* trigger;
+ char* match;
  int8_t eof=0;
-
- int8_t action_fire=0;
-
-
  char  word[MAX_WORD_LENGTH];
  char  strict_char;
  char  character;
+
+ uint8_t found_match=0;
+
 
  while(1)
  {
   for(uint16_t i=0;i<op_count;i++)
   {
+    printf("Argument = %s \n ", operations[i].argument[0]);
     switch(operations[i].object)
     {
-     case STRICT_WORD: eof=Regex_GetObjectStrictWord(&head,word); trigger=head-eof; break;
+     case STRICT_WORD: eof=Regex_GetObjectStrictWord(&head,word);
+                       if(i==0){ match=head-eof ; } break;
 
-     case STRICT_CHAR: eof=Regex_GetObjectStrictChar(&head,&strict_char); break;
+     case STRICT_CHAR: eof=Regex_GetObjectStrictChar(&head,&strict_char);break;
 
-     case CHAR:if(*head=='\0'){ printf(" No Futher Characters \n "); eof=-1; }
+     case CHAR:if(*head=='\0'){ printf(" No Futher Characters \n "); eof= -1; }
                character=*head;
                printf(" Not Strict Character %c Found \n ", character);
                break;
@@ -79,25 +80,26 @@ int8_t Regex_ExecuteOperations(char* text,
      default : break;
     }
 
-    if(eof==-1){ printf(" End Of File Reached "); return 1; }
+    if(eof==-1){ printf(" End Of File Reached "); return text; }
 
-   switch(operations[i].object)
-   {
-    case STRICT_WORD:action_fire=Regex_TestStrictWord(operations[i],word); break;
+    switch(operations[i].object)
+    {
+     case STRICT_WORD:found_match=Regex_TestStrictWord(operations[i],word); break;
 
-    default  : break;
-   }
-
-   if(action_fire==1){ action(trigger); }
+     default  : break;
+    }
   }
 
+  if(found_match==1){ printf("Match Found \n "); return result ; }
  }
+
+
 }
 
 
 // ----------------------------------------------------------------- Word Functions Start
 
-int64_t Regex_GetObjectStrictWord(char** head, char word[MAX_WORD_LENGTH])
+int16_t Regex_GetObjectStrictWord(char** head, char word[MAX_WORD_LENGTH])
 {
   int16_t word_length=0;
 
@@ -121,7 +123,6 @@ int64_t Regex_GetObjectStrictWord(char** head, char word[MAX_WORD_LENGTH])
     }
 
     if(Regex_JumpToSpace(head)==-1){ printf(" End Of File Reached"); return -1; }
-
   }
 }
 
@@ -143,7 +144,7 @@ int16_t Regex_IsStrictWord(char** head)
 
 // ----------------------------------------------------------------- Char Functions Start
 
-int64_t Regex_GetObjectStrictChar(char** head,char* strict_char)
+int8_t Regex_GetObjectStrictChar(char** head,char* strict_char)
 {
 
   while(**head!='\0')
